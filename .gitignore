@@ -1,0 +1,28 @@
+# AI agent 說明檔（只留在本機）
+AGENTS.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# 為了執行前處理腳本而複製進子資料夾的原始資料（正本在 Dataset/）
+Dataset/*/新竹_2025.csv
+
+# LaTeX 編譯產物
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+
+# 編輯器 / 作業系統
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
