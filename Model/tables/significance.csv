@@ -1,0 +1,7 @@
+﻿compared_with,cv_mae_gap_mean,cv_mae_gap_std,paired_t,paired_t_p,test_mae_gap,boot_ci_low,boot_ci_high,ci_excludes_0
+Training mean,-4.6085,1.5716,-6.557,0.0028,-3.4876,-4.0102,-2.885,True
+Persistence (t-1),-0.1607,0.1428,-2.5159,0.0656,-0.0742,-0.1927,0.0475,False
+Single-feature OLS (PM2.5 t-1),-0.2429,0.1662,-3.2684,0.0308,-0.1101,-0.1991,-0.0098,True
+HistGradientBoosting (raw),-0.2693,0.2035,-2.9601,0.0415,-0.0545,-0.1315,0.0351,False
+Set A: all 162 raw columns,-0.1195,0.0998,-2.6771,0.0554,0.041,0.0023,0.0828,True
+Set B: top-k |Spearman| (in-fold),-0.0025,0.0864,-0.0647,0.9515,0.0048,-0.0329,0.0423,False

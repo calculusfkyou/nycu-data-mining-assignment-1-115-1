@@ -1,0 +1,6 @@
+﻿hypothesis,evidence,supported
+H1 persistence dominates,β=+3.25 (p=2.58e-14); ΔMAE without persistence = +0.035,yes
+H2 PM10/CO add information,β=+2.79 (p=2.47e-22) z_PM10_lag_1h; β=-0.75 (p=0.01) z_PM10_lag_2h; β=-0.86 (p=4.15e-06) z_PM10_lag_3h; β=+1.76 (p=1.01e-19) z_CO_lag_1h; β=-0.61 (p=0.00959) z_CO_lag_2h; β=-0.16 (p=0.235) z_CO_lag_3h; ΔMAE without co_pollutants = +0.161,yes
+H3 wind effect negative and nonlinear,"ws>=6 β=+0.04 (p=0.415); PM2.5×ws β=-0.13 (p=0.404); ΔMAE without wind_bins = +0.004, without interaction = +0.000",no
+H4 temperature mostly reflects season,marginal slope -2.86 vs β=-0.38 (p=3.03e-06) (μg/m³ per SD),yes
+H5 aggregates beat raw lags,"CV MAE(raw lags) − CV MAE(Set C) = +0.006 (paired fold std = 0.014, paired t-test p = 0.424); fold std = 0.467",inconclusive
