@@ -1,8 +1,10 @@
-pandas
-numpy
-matplotlib
-scikit-learn
-scipy
-statsmodels
-joblib
-jupyter
+# 鎖定版本：Model/outputs/final_model.joblib 由 scikit-learn 1.6.1 產生。
+# 以 Python 3.11 驗證：用這組版本重跑 Model/ 的兩本 notebook，tables/ 與 outputs/ 和 repo 內的檔案逐位元組相同。
+pandas==2.2.3
+numpy==2.0.2
+matplotlib==3.9.4
+scikit-learn==1.6.1
+scipy==1.13.1
+statsmodels==0.14.4
+joblib==1.4.2
+jupyter==1.1.1
