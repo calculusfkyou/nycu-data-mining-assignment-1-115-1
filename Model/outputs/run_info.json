@@ -1,0 +1,20 @@
+{
+  "final_name": "Ridge",
+  "final_method": "Ridge + Set C",
+  "final_params": {
+    "model__alpha": 31.622776601683793
+  },
+  "strongest_baseline": "Persistence (t-1)",
+  "baselines": [
+    "Training mean",
+    "Persistence (t-1)",
+    "Single-feature OLS (PM2.5 t-1)",
+    "HistGradientBoosting (raw)"
+  ],
+  "set_methods": {
+    "A": "Set A: all 162 raw columns",
+    "B": "Set B: top-k |Spearman| (in-fold)",
+    "C": "Set C: ours"
+  },
+  "threshold_mae": 3.0
+}
