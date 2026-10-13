@@ -1,16 +1,46 @@
-﻿新竹_2025.csv 是 從政府網站下載下來的 raw data
+# Dataset
 
-有三種資料前處理方法
-1. 只有 PM2.5 指標（Only_PM2.5）
-    - preprocessing.py
-    - pure.csv（將缺失值以前後一小時的平均取代，尚未進行標準化）
-    - standardized.csv （經過標準化）
-2. 所有指標 （All_Matrics）
-    - preprocessing_all.py
-    - standardized_all.csv（經過標準化，也有標註 train 跟 test 了 80%-20%）
-    - 前面的 column 紀錄該指標是否為缺失值（0代表沒缺失）及缺失原因，後面才是真值
-3. 所有指標 + 移除缺失值（All_and_Removed）
-    - preprocess.py
-    - hsinchu_2025_clean.csv（少量缺失做插值，太多連續缺失值的資料直接移除）
-    - hsinchu_2025_scaled.csv（做過標準化）
-    - 這邊還沒切 Train
+`新竹_2025.csv` 是從環境部空氣品質監測網下載的原始資料（raw data）：新竹測站 2025 年全年，寬表格格式，每一列是「日期 × 測項」，欄位 `00`–`23` 是各小時的值。
+
+無效值的標記：`#` 儀器檢核無效、`*` 程式檢核無效、`X` 人工檢核無效、`A` 儀器異常警報、`NA` 其他無效、空白。
+
+下面三種前處理方法，各自在一個資料夾裡。
+
+> **重跑前處理腳本時**：每支腳本都只讀取**自己資料夾裡**的 `新竹_2025.csv`，並且會覆寫同資料夾的輸出檔。
+> 請把腳本和 `新竹_2025.csv` 複製到另一個資料夾執行，只把需要的新檔案複製回來。
+
+## 1. 只有 PM2.5（`Only_PM2.5/`）
+
+- `preprocessing.py`
+- `pure.csv`：PM2.5 每小時序列（8760 列），尚未標準化。缺值在前後兩個有效值之間**線性插值**，再**無條件進位**（`ceil`）。連續缺好幾小時時，不是「前後一小時取平均」。
+- `standarized.csv`：`pure.csv` 經過 z-score 標準化。**注意檔名少了一個 d**。
+  - ⚠ 平均數與標準差是用**全年資料**算的，test 期間的資訊會洩漏到標準化，不要當正式實驗資料。
+
+## 2. 所有測項（`All_Metrics/`）← 主資料集
+
+- `preprocessing_all.py`
+- 已經切成**監督式學習格式**：每一列是一個目標小時 t，特徵是前 9 小時（lag 1–9h）的 18 個測項，共 162 個特徵，目標是 t 小時的 PM2.5。
+- 目標 PM2.5 是無效值的列**直接刪除、不補值**，共刪除 88 列，剩 8663 列。
+- 依時間先後切分 80% / 20%：train 6930 列、test 1733 列，test 從 2025-10-19 21:00 開始，記錄在 `dataset_split` 欄。
+- 欄位順序：
+  1. `target_datetime`、`target_PM2.5`、`dataset_split`
+  2. 每個特徵各有兩欄：`*_missing`（0 = 有值，1 = 缺值）、`*_missing_reason`（缺值原因代碼，例如 `instrument_check_invalid`）
+  3. 最後 162 欄是特徵值
+- `pure_all.csv`：特徵值和目標都是**原始單位**，缺值是空白（沒有補值）。
+- `standardized_all.csv`：特徵缺值以 **train 平均數**補值，再用 **train 的平均數與標準差**做 z-score；`target_PM2.5` 也有標準化。
+  - 兩個檔案的列、欄完全對齊，可以逐列對應。建模時 y 取 `pure_all.csv` 的 `target_PM2.5`（μg/m³），X 取 `standardized_all.csv`。
+  - `WIND_DIREC`、`WD_HR` 是 0–360 度的角度，直接標準化沒有意義，使用前應轉成 sin/cos。
+
+## 3. 所有測項 + 移除缺值（`All_and_Removed/`）
+
+- `preprocess.py`
+- 每小時一列、每個測項一欄（不是 lag 視窗格式）。
+- `hsinchu_2025_clean.csv`：
+  - 連續缺 **≤ 3 小時**：線性插值。風向（`WIND_DIREC`、`WD_HR`）拆成 sin/cos 分量插值後再轉回角度，避免 359° 和 1° 被插成 180°。
+  - 連續缺 **> 3 小時**，以及資料開頭、結尾的缺值：補值後仍含缺值的小時**整列刪除**，剩 8360 列。刪除後**時間不連續**，之後切 lag 視窗時要確認相鄰兩列相差 1 小時。
+  - `RAINFALL` 的 `NR`（無降雨）視為 0。2025 年的資料裡沒有出現 `NR`。
+  - 另有 `PM2.5_is_imputed` 欄，標記 PM2.5 是不是插值補出來的。
+- `hsinchu_2025_scaled.csv`：z-score 標準化，平均數與標準差只用**前 80% 的列**計算（`--train-ratio 0.8`，也是程式預設值）。
+  - 這裡還沒有切 train / test。
+  - 因為刪過列、也沒有 lag 視窗，前 80% 的列結束在 2025-10-22 15:00，和 `All_Metrics` 的切點（2025-10-19 21:00）不同。要和 `All_Metrics` 比較時，請改用相同的切點。
+- 執行時還會輸出 `hsinchu_2025_scaler_stats.csv`（各測項的 mean / std），這個檔案沒有放進 repo。
