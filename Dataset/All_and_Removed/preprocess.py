@@ -161,7 +161,7 @@ def main() -> None:
         "--stats-output", default="hsinchu_2025_scaler_stats.csv", help="mean/std 輸出 CSV 路徑"
     )
     parser.add_argument(
-        "--train-ratio", type=float, default=0.7, help="用前多少比例的時間資料計算 mean/std"
+        "--train-ratio", type=float, default=0.8, help="用前多少比例的時間資料計算 mean/std"
     )
     args = parser.parse_args()
 
