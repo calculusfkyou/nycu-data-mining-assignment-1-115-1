@@ -61,7 +61,16 @@ pip install -r requirements.txt
 | calendar | 目標小時 sin/cos、週末；不用月份 | train 沒有 11–12 月 |
 | missing_flag | PM2.5 lag 1h 是否為補值 | standardized 用平均數補值 |
 
-刪除完全共線的 NOx（= NO + NO2）、THC（= CH4 + NMHC），以及重複的 WS_HR、WD_HR。
+刪除共線欄位（刪除前的 VIF 來自 `EDA/tables/vif.csv`，18 個測項 @ lag 1h；刪除後的 VIF 來自 `tables/vif_set_c.csv`）：
+
+| 刪除 | 原因 | 刪除前 VIF | 刪除後（Set C） |
+|---|---|---|---|
+| NOx | NOx = NO + NO2，完全共線 | NOx 19,367、NO2 11,950、NO 2,718 | NO 1.98、NO2 4.76 |
+| THC | THC = CH4 + NMHC，完全共線 | THC 13,707、CH4 7,671、NMHC 1,765 | CH4 2.89、NMHC 4.71 |
+| WS_HR | 和 WIND_SPEED r = 0.94（EDA Fig 5） | 8.69（不高，但內容幾乎相同） | WIND_SPEED 4.72 |
+| WD_HR | sin/cos 和 WIND_DIREC r ≈ 0.9（EDA Fig 5） | sin 5.73、cos 5.39 | 風向 sin 4.96、cos 4.46 |
+
+完全共線的組合刪掉加總欄，保留可以分開解讀的成分。WS_HR、WD_HR 的 VIF 沒有超過 10，刪除的依據是兩兩相關高、內容重複。
 
 Ablation 用的另外兩組：Set A = 全部 162 個原始欄位；Set B = Set A 中 |Spearman ρ| 前 k 名，在每個訓練 fold 內重選，k ∈ {5, 10, 20}。
 
