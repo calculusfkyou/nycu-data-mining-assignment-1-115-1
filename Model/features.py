@@ -106,9 +106,10 @@ def engineer(data):
     for k in (3, 6, 9):
         eng[f"eng_pm25_mean{k}h"] = pm.iloc[:, :k].mean(axis=1)
     eng["eng_pm25_std9h"] = pm.std(axis=1)
-    # 風：角度轉 sin/cos，再乘上風速得到風向量
+    # 風：角度轉 sin/cos，再乘上風速得到風向量。風向是「風吹來的方向」，依氣象慣例
+    # u = −ws·sin(wd)（> 0 為向東吹）、v = −ws·cos(wd)（> 0 為向北吹）
     eng["eng_wd_sin"], eng["eng_wd_cos"] = np.sin(wd), np.cos(wd)
-    eng["eng_wind_u"], eng["eng_wind_v"] = ws * np.sin(wd), ws * np.cos(wd)
+    eng["eng_wind_u"], eng["eng_wind_v"] = -ws * np.sin(wd), -ws * np.cos(wd)
     # 風速分段（Fig 4：<1 m/s 與 ≥6 m/s 的中位數明顯不同），基準為 1–6 m/s
     eng["eng_ws_lt1"] = _flag(ws < 1, ws)
     eng["eng_ws_ge6"] = _flag(ws >= 6, ws)

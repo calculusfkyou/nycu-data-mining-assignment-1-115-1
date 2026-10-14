@@ -18,14 +18,14 @@ eng_wd_sin,wind,-0.1525,-0.3977,0.0927,0.2229,"OLS t-test, HAC (Newey-West, 24 l
 eng_pm25_x_ws,interaction,-0.1334,-0.4467,0.1799,0.404,"OLS t-test, HAC (Newey-West, 24 lags)",4.7355,-0.0839,-0.3904,0.2437,False,False
 eng_hour_sin,calendar,0.1189,-0.0056,0.2434,0.0613,"OLS t-test, HAC (Newey-West, 24 lags)",1.9503,0.1218,0.0057,0.2524,False,False
 eng_hour_cos,calendar,-0.1144,-0.2671,0.0384,0.1423,"OLS t-test, HAC (Newey-West, 24 lags)",1.7026,-0.1146,-0.2394,0.0365,False,False
-eng_wind_v,wind,-0.084,-0.3291,0.1611,0.5017,"OLS t-test, HAC (Newey-West, 24 lags)",8.1624,-0.0835,-0.2948,0.1769,False,False
+eng_wind_v,wind,0.084,-0.1611,0.3291,0.5017,"OLS t-test, HAC (Newey-West, 24 lags)",8.1624,0.0835,-0.1769,0.2948,False,False
 eng_weekend,calendar,-0.0801,-0.1705,0.0102,0.0822,"OLS t-test, HAC (Newey-West, 24 lags)",1.0672,-0.0771,-0.1727,0.0096,False,False
 eng_pm25_trend,pm25_aggregates,0.0596,-0.1918,0.311,0.6421,"OLS t-test, HAC (Newey-West, 24 lags)",4.1496,0.1061,-0.1114,0.303,False,False
 z_CH4_lag_1h,co_pollutants,-0.0574,-0.2344,0.1197,0.5253,"OLS t-test, HAC (Newey-West, 24 lags)",2.8853,-0.0516,-0.2144,0.1286,False,False
 eng_pm25_std9h,pm25_aggregates,0.056,-0.133,0.2451,0.5614,"OLS t-test, HAC (Newey-West, 24 lags)",1.6075,0.0631,-0.1238,0.268,False,False
 z_RAINFALL_lag_1h,meteorology,-0.0558,-0.138,0.0264,0.1831,"OLS t-test, HAC (Newey-West, 24 lags)",1.3112,-0.0579,-0.1276,0.0282,False,False
 z_RH_lag_1h,meteorology,0.052,-0.089,0.193,0.47,"OLS t-test, HAC (Newey-West, 24 lags)",1.8172,0.0617,-0.0934,0.202,False,False
-eng_wind_u,wind,-0.0496,-0.3058,0.2066,0.7043,"OLS t-test, HAC (Newey-West, 24 lags)",7.2475,-0.047,-0.2979,0.2167,False,False
+eng_wind_u,wind,0.0496,-0.2066,0.3058,0.7043,"OLS t-test, HAC (Newey-West, 24 lags)",7.2475,0.047,-0.2167,0.2979,False,False
 z_WIND_SPEED_lag_1h,wind,-0.0455,-0.2545,0.1634,0.6692,"OLS t-test, HAC (Newey-West, 24 lags)",4.7158,-0.07,-0.2727,0.1146,False,False
 eng_ws_ge6,wind_bins,0.0374,-0.0526,0.1274,0.4154,"OLS t-test, HAC (Newey-West, 24 lags)",1.0572,0.0383,-0.0476,0.1286,False,False
 z_SO2_lag_1h,co_pollutants,0.0359,-0.0656,0.1374,0.4883,"OLS t-test, HAC (Newey-West, 24 lags)",1.1992,0.0367,-0.0739,0.1367,False,False
