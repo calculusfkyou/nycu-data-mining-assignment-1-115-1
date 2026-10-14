@@ -55,11 +55,15 @@ pip install -r requirements.txt
 | pm25_aggregates | 趨勢 lag1 − lag2、3/6/9h 滾動平均、9h 標準差（取代 lag 2–9h，避免和 lag1 完全共線） | lag 9h 仍有 r = 0.55 |
 | co_pollutants | PM10、CO lag 1–3h；NO、NO2、O3、SO2、CH4、NMHC lag 1h | PM10 r = 0.78、CO 0.60 |
 | meteorology | 溫度、濕度、雨量 lag 1h，有雨旗標 | 溫度 r ≈ −0.33 |
-| wind | 風速、風向 sin/cos、風向量 u/v | 角度要轉換 |
+| wind | 風速、風向 sin/cos、風向量 u/v | 控制特徵：Fig 4 風向分組有差異，但線性相關 ≈ 0；角度要轉換 |
 | wind_bins | 風速 < 1、≥ 6 m/s 旗標 | Fig 4 非線性 |
 | interaction | PM2.5(t−1) × 風速(t−1) | 風大時擴散強 |
-| calendar | 目標小時 sin/cos、週末；不用月份 | train 沒有 11–12 月 |
-| missing_flag | PM2.5 lag 1h 是否為補值 | standardized 用平均數補值 |
+| calendar | 目標小時 sin/cos、週末；不用月份 | 控制特徵：Fig 3 各小時中位數 9–12，差異小；週末 EDA 未分析；train 沒有 11–12 月，所以不用月份 |
+| missing_flag | PM2.5 lag 1h 是否為補值 | 控制特徵：standardized 用平均數補值，旗標讓模型區分補值列 |
+
+wind、calendar、missing_flag 三群沒有對應的假設，是**控制特徵**：EDA 看得出可能有影響，但證據不足以寫成可檢驗的假設。
+放進模型是為了控制這些因素，不做方向上的預測。逐群移除的結果（ΔMAE：wind −0.009、calendar +0.001、missing_flag −0.003）也顯示它們的貢獻接近 0。
+風的非線性效果另外由 wind_bins、interaction 兩群檢驗（H3）。
 
 刪除共線欄位（刪除前的 VIF 來自 `EDA/tables/vif.csv`，18 個測項 @ lag 1h；刪除後的 VIF 來自 `tables/vif_set_c.csv`）：
 
@@ -136,6 +140,9 @@ Ablation 用的另外兩組：Set A = 全部 162 個原始欄位；Set B = Set A
 | 單一特徵 OLS | −0.24，p = 0.031 | [−0.20, −0.01] | 兩者都顯著 |
 
   和最強 baseline（persistence）相比，只能說是「小幅、在 CV 上一致的改善」，不能說明顯勝出。
+- **限制：selection bias。** 線性模型的變體與超參數是在同一組 5 個 fold 上選出的，報告的就是選擇時用的 CV 分數，所以調參過的模型（最終模型、Set A / B）CV 分數偏樂觀。
+  training mean、persistence、單一特徵 OLS 沒有超參數，HistGradientBoosting 用預設參數，都不受影響。
+  因此上表的 CV 配對檢定（特別是對 persistence 的 p = 0.066）也偏樂觀，最終結論以只評估一次的 test 為準。要消除這個偏差需要改用 nested CV。
 - 最終模型在 test 上贏過非線性的 HistGradientBoosting（差距不顯著）。HistGradientBoosting 的 CV 標準差最大（0.63），在樣本少的早期 fold 表現不穩定。
 
 ### 3. 特徵 Ablation（`ablation.csv`）
