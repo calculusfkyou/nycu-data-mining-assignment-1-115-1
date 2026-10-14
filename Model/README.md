@@ -61,7 +61,16 @@ pip install -r requirements.txt
 | calendar | 目標小時 sin/cos、週末；不用月份 | train 沒有 11–12 月 |
 | missing_flag | PM2.5 lag 1h 是否為補值 | standardized 用平均數補值 |
 
-刪除完全共線的 NOx（= NO + NO2）、THC（= CH4 + NMHC），以及重複的 WS_HR、WD_HR。
+刪除共線欄位（刪除前的 VIF 來自 `EDA/tables/vif.csv`，18 個測項 @ lag 1h；刪除後的 VIF 來自 `tables/vif_set_c.csv`）：
+
+| 刪除 | 原因 | 刪除前 VIF | 刪除後（Set C） |
+|---|---|---|---|
+| NOx | NOx = NO + NO2，完全共線 | NOx 19,367、NO2 11,950、NO 2,718 | NO 1.98、NO2 4.76 |
+| THC | THC = CH4 + NMHC，完全共線 | THC 13,707、CH4 7,671、NMHC 1,765 | CH4 2.89、NMHC 4.71 |
+| WS_HR | 和 WIND_SPEED r = 0.94（EDA Fig 5） | 8.69（不高，但內容幾乎相同） | WIND_SPEED 4.72 |
+| WD_HR | sin/cos 和 WIND_DIREC r ≈ 0.9（EDA Fig 5） | sin 5.73、cos 5.39 | 風向 sin 4.96、cos 4.46 |
+
+完全共線的組合刪掉加總欄，保留可以分開解讀的成分。WS_HR、WD_HR 的 VIF 沒有超過 10，刪除的依據是兩兩相關高、內容重複。
 
 Ablation 用的另外兩組：Set A = 全部 162 個原始欄位；Set B = Set A 中 |Spearman ρ| 前 k 名，在每個訓練 fold 內重選，k ∈ {5, 10, 20}。
 
@@ -69,9 +78,40 @@ Ablation 用的另外兩組：Set A = 全部 162 個原始欄位；Set B = Set A
 
 - test：依時間的後 20%（2025-10-19 21:00 至 12-31 23:00，1733 列），只在 01 的最後一步評估一次。
 - CV：train 內 `TimeSeriesSplit(n_splits=5, gap=9)`，所有方法共用同一組 folds（`outputs/cv_folds.csv`）。
-- 指標：MAE、RMSE、R²（μg/m³）。決策門檻 MAE ≤ 3 μg/m³（AQI「普通」級寬約 20 μg/m³）。
 - Baseline：training mean、persistence、單一特徵 OLS、HistGradientBoosting（原始欄位）。
 - 線性模型：OLS、Ridge、Lasso、ElasticNet，以 CV MAE 選擇。
+
+### 指標
+
+| 指標 | 單位 | 為什麼用 |
+|---|---|---|
+| **MAE**（主要指標） | μg/m³ | 平均差幾 μg/m³，最直觀；所有誤差線性加權，不會被少數極端值主導。CV 選模型、決策門檻都用 MAE |
+| RMSE | μg/m³ | 對大誤差加重，反映濃度突變、高濃度時段的錯誤；和 MAE 的差距代表誤差分布的尾部有多重 |
+| R² | 無 | 解釋了多少變異，可以跨 fold、跨季節比較；但 test 期間的濃度變異較小（標準差 6.64 vs. train 8.71），R² 要搭配 MAE 一起看，也可能為負 |
+
+不使用 MAPE：目標有 0 值（train 160 筆、test 69 筆），除以實際值會不穩定（作業 p.13）。
+
+### 決策門檻：MAE ≤ 3 μg/m³
+
+- **應用情境**：直接使用**小時濃度**。例如敏感族群看下一小時的 PM2.5 預測值，決定要不要外出或調整戶外活動。
+- **尺度依據**：用環境部自 2025-01-01 起的 AQI 分級當作「有意義的濃度誤差尺度」：PM2.5「良好」為 0–12.4、「普通」為 12.5–30.4、「對敏感族群不健康」為 30.5–50.4 μg/m³（[環境部空氣品質指標](https://airtw.moenv.gov.tw/cht/Information/Standard/AirQualityIndicatorNew.aspx)）。「普通」級寬 18 μg/m³，平均誤差 3 μg/m³ 約為級寬的六分之一。
+- **限制：分級本身不是針對單一小時濃度。** 日 AQI 的分級是用 24 小時平均值定義的；即時 AQI 的 PM2.5 濃度是 0.5 × 前 12 小時平均 + 0.5 × 前 4 小時平均。所以不能把門檻寫成「MAE ≤ 3 就代表 AQI 等級判斷正確」。
+- **換算到即時 AQI，門檻是保守的。** 到 t 時刻，兩個窗口裡只有 t 這一小時是預測值，其餘都已經量測到，所以每小時誤差 e 傳到即時 AQI 濃度只剩 0.5 × e/12 + 0.5 × e/4 = **e/6**。3 μg/m³ 的門檻換算後只剩約 0.5 μg/m³。test 上的驗證見下表（`02_analysis.ipynb` 第 6 步、`tables/aqi_category_accuracy.csv`）。
+- **已知結果**：persistence 也達到這個門檻（CV MAE 2.91、test MAE 2.55）。門檻代表的是「可用」的誤差水準；模型的價值要看它和 baseline 的比較（§7），而不是看有沒有過門檻。門檻的數值沒有因為看過結果而調整，只更新了依據（原本引用的是 2025 年以前的分級 15.5–35.4 μg/m³）。
+
+**AQI 等級正確率（test，界線 12.5 / 30.5 / 50.5 μg/m³）**
+
+| 方法 | 每小時 MAE | 用單一小時值判斷等級 | 用即時 AQI 公式判斷等級 | 即時 AQI 濃度的平均誤差 |
+|---|---|---|---|---|
+| Persistence (t−1) | 2.55 | 84.7% | 97.7% | 0.43 |
+| Set A（162 欄） | 2.44 | 87.5% | 98.0% | 0.41 |
+| Set B（top-k） | 2.47 | 86.2% | 97.9% | 0.42 |
+| **Set C（最終）** | 2.48 | 86.4% | 97.8% | 0.42 |
+
+- 即時 AQI 濃度的誤差約為每小時 MAE 的 1/6（比值 0.17），和推導一致。
+- 即時 AQI 有 11/12 的資訊已經量測到，連 persistence 的等級正確率都有 97.7%，下一小時預測對「AQI 等級」的幫助很小。這也是應用情境以小時濃度為準的原因。
+- 以單一小時值判斷等級時，Set C 比 persistence 多 1.8 個百分點。
+- 這是看過 test 結果後補做的分析，只用來解讀門檻，不影響任何模型或門檻的選擇。缺值小時直接略過，沒有套用官方「4 小時至少 2 筆、12 小時至少 6 筆有效」的規則（test 缺值很少，影響不大）。
 
 ## 輸出與論文段落對照
 
@@ -85,6 +125,7 @@ Ablation 用的另外兩組：Set A = 全部 162 個原始欄位；Set B = Set A
 | `tables/significance.csv` | paired t-test、block bootstrap 95% CI | §7.1 |
 | `tables/ablation.csv`、`tables/setB_selected_features.csv` | Set A / B / C 與逐群移除 | §7.2 |
 | `tables/slice_mae.csv`、`figures/fig3_slice_mae` | 切片 MAE | §7.2 |
+| `tables/aqi_category_accuracy.csv` | AQI 等級正確率（單一小時值 vs. 即時 AQI 公式） | §6.2、§7.1 |
 | `tables/coefficients.csv`、`figures/fig4_coefficients_forest` | β、95% CI、p 值（HAC）、VIF | §8.1 |
 | `tables/hypotheses.csv` | H1–H5 的證據與初步判定 | §8.1 |
 | `tables/largest_errors.csv`、`figures/fig5_residuals` | 最大誤差 5 筆、殘差圖 | §8.2 |
@@ -225,4 +266,4 @@ Ridge 的係數和 OLS 的差距都在 0.16 以內。方向只有兩個接近 0 
 4. 值得嘗試的下一步：
    - 加入能提前反映變化的資訊，例如上風處測站、氣象預報。
    - 用跨年度資料涵蓋 11、12 月的季節。
-   - 把決策門檻改成高濃度時段的誤差，讓門檻能區分方法好壞。
+   - 整體門檻無法區分方法好壞，論文中另外報告高濃度時段（≥ 24 μg/m³，test 65 筆）的誤差（`tables/slice_mae.csv`）：Set C 的 MAE 是 4.61，**比 persistence 的 3.91 還差**，正好是整體門檻看不到的弱點。

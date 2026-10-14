@@ -1,0 +1,5 @@
+﻿method,hourly_mae,category_acc_hourly_%,category_acc_realtime_aqi_%,realtime_aqi_conc_mae,conc_mae_ratio
+Persistence (t-1),2.55,84.651,97.692,0.432,0.169
+Set A: all 162 raw columns,2.435,87.478,97.98,0.414,0.17
+Set B: top-k |Spearman| (in-fold),2.471,86.209,97.865,0.421,0.17
+Set C: ours,2.476,86.44,97.807,0.42,0.17
