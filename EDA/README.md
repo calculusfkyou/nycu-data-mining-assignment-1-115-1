@@ -155,14 +155,44 @@ python EDA/eda.py
 
 ## 對特徵選擇的啟示
 
-以下是從上述結果推得的方向，尚未定稿（§4 E 特徵決策表、F 假設待補）：
+### E. 特徵決策（已定稿，實作於 `Model/features.py` 的 `GROUPS`）
 
-1. **PM2.5 歷史值一定要保留**，lag 1h 最重要，較遠的 lag 可視模型而定。
-2. **完全共線的組合擇一保留**：NO、NO2、NOx 中不要三個都放，CH4、NMHC、THC 同理。線性模型尤其需要處理。
-3. **重複的風速、風向欄位擇一**：`WIND_SPEED` 與 `WS_HR`、`WIND_DIREC` 與 `WD_HR`。
-4. **風向必須轉成 sin/cos**，不能直接用 0–360 度。
-5. **風速、風向的影響偏非線性**，線性模型可考慮分段特徵，樹模型則可直接使用。
-6. **季節資訊不要用原始月份數字**。若要納入，可考慮其他方式（例如 AMB_TEMP 本身已帶有季節訊號）。
+| 特徵 | 決策 | EDA 證據 | Model 中的特徵群 |
+|---|---|---|---|
+| PM2.5 lag 1h | 保留 | 與目標 r = 0.88，最強的單一特徵（Fig 1） | persistence |
+| PM2.5 lag 2–9h | 轉換：改成趨勢（lag1 − lag2）、3/6/9h 平均、9h 標準差 | lag 9h 仍有 r = 0.55（Fig 2），但 lag 之間 VIF 4.6–7.1，資訊重複 | pm25_aggregates |
+| PM10、CO | 保留 lag 1–3h | ρ = 0.80、0.62，僅次於 PM2.5 | co_pollutants |
+| NO2、O3、SO2、CH4、NMHC | 保留 lag 1h | ρ = 0.26–0.36，有中度關聯 | co_pollutants |
+| NO | 保留 lag 1h | ρ = −0.04，單獨幾乎無關；但丟掉 NOx 後，要和 NO2 一起保留才不會失去氮氧化物的資訊 | co_pollutants |
+| NOx、THC | 丟掉 | 完全共線：NOx = NO + NO2、THC = CH4 + NMHC，VIF 19,367、13,707 | — |
+| WS_HR、WD_HR | 丟掉 | 與 WIND_SPEED、WIND_DIREC 重複（r = 0.94、≈ 0.9） | — |
+| WIND_SPEED | 保留，另加分段旗標（< 1、≥ 6 m/s） | 線性相關弱（ρ = −0.10），但 0–1 m/s 時中位數明顯較高（Fig 4） | wind、wind_bins |
+| WIND_DIREC | 轉換：sin/cos，以及與風速相乘的風向量 u/v | 0–360 度不能直接用；分方位後有差異（Fig 4） | wind |
+| PM2.5 × 風速 | 新增交互作用 | 風大時擴散較強，PM2.5 的持續性應該較弱 | interaction |
+| AMB_TEMP、RH、RAINFALL | 保留 lag 1h，另加有雨旗標 | 溫度 ρ = −0.35，各 lag 幾乎不變，反映季節 | meteorology |
+| 小時、週末 | 轉換：目標小時的 sin/cos，另加週末旗標 | 各小時中位數 9–12，差異小，但成本低（Fig 3）；週末在 EDA 未分析，建模時才加入（可能有交通差異） | calendar |
+| 月份 | 不使用 | train 只有 1–10 月，test 是 10–12 月，會遇到沒看過的值（Fig 3） | — |
+| `_missing` 旗標 | 只保留 PM2.5 lag 1h 的旗標 | 見下方說明 | missing_flag |
+| `_missing_reason` | 丟掉 | 文字欄，不能直接當特徵；且缺值率低（見下方說明） | — |
+
+**`_missing` 旗標的取捨理由：**
+
+- 各測項缺值率只有 0.41%–3.45%（`summary_stats.csv`），lag 1h 的 18 個測項有 92% 的列完全沒有缺值。
+- 162 個特徵各配一個旗標，特徵數會加倍，但絕大多數旗標幾乎都是 0。
+- 只為 PM2.5 lag 1h 保留旗標：它是最重要的特徵，`standardized_all.csv` 用 train 平均補值，補值的列可能讓模型誤判，所以讓模型知道哪些列是補的。
+- Model 的 ablation 顯示，拿掉這個旗標後 CV MAE 反而降低 0.003（`Model/tables/ablation.csv`），代表旗標本身幾乎沒有幫助。
+
+### F. 假設（已定稿，在 `Model/02_analysis.ipynb` 檢驗）
+
+| 假設 | EDA 依據 | 檢驗結果（`Model/tables/hypotheses.csv`） |
+|---|---|---|
+| H1 PM2.5(t−1) 是最主要的預測因子 | r = 0.88，所有特徵中最高（Fig 1） | 支持：β = +3.25，所有係數中最大 |
+| H2 控制 PM2.5 後，PM10、CO 仍有額外資訊 | ρ = 0.80、0.62，且和 PM2.5 的 r = 0.82，不完全重複（Fig 5） | 支持：PM10、CO lag 1h 為正（+2.79、+1.76） |
+| H3 風速效果為負且非線性，靜風時 PM2.5 偏高 | 0–1 m/s 中位數約 12，1–6 m/s 約 10（Fig 4） | 支持（僅低風速端）：< 1 m/s 旗標 β = +0.37；≥ 6 m/s 不顯著 |
+| H4 溫度的負相關主要反映季節 | ρ = −0.35，各 lag 幾乎不變；月份差異明顯（Fig 2、Fig 3） | 支持：單變量斜率 −2.86，控制其他變數後只剩 −0.38 |
+| H5 PM2.5 聚合特徵優於原始 lag 2–9h | lag 9h 仍有 r = 0.55，但 lag 之間 VIF 4.6–7.1（Fig 2） | 無法判定：CV MAE 差 +0.006，paired t-test p = 0.42 |
+
+H5 是建模階段新增的假設，EDA 依據為 Fig 2 的 lag 衰減與 PM2.5 lag 之間的 VIF。
 
 ## 限制與待辦
 
@@ -170,4 +200,3 @@ python EDA/eda.py
 - 只分析了 2025 年單一測站，季節結論無法驗證是否跨年成立。
 - train 沒有 11、12 月的資料，對 test 期間的季節行為無從觀察。
 - `lag_correlation_decay.csv` 中原始角度的兩列應忽略或改成 sin/cos。
-- §4 E（特徵決策表）與 F（假設定稿）尚未完成。
